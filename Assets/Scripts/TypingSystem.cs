@@ -17,6 +17,8 @@ public class TypingSystem : MonoBehaviour
     [SerializeField] private int cursor_position = 0;
     List<int> correct_chars_list = new List<int> {};
     List<int> total_chars_list = new List<int> {};
+
+    List<int> sentence_char_correct_list = new List<int> {};
     private float timer = 0f;
     private int correct_chars_a_second;
     private int total_chars_a_second;
@@ -24,7 +26,11 @@ public class TypingSystem : MonoBehaviour
     private float WPM = 0f;
     private float accuracy = 100f;
     private bool timer_active = false;
+    public Color correct_color = Color.gray;
+    public Color incorrect_color = Color.red;
     public TextMeshProUGUI GUI_typing_text;
+
+    public TextMeshProUGUI GUI_color_overlay_text;
     public TextMeshProUGUI GUI_WPM_text;
     public TextMeshProUGUI GUI_accuracy_text;
     public TextMeshProUGUI GUI_trail_sentence_a;
@@ -33,11 +39,17 @@ public class TypingSystem : MonoBehaviour
 
     public AudioClip[] typing_sfx;
     private AudioSource audio_source;
+    private CurrencySystem currency_system;
 
+    private void GetCurrencySystem()
+    {
+        GameObject currency = GameObject.Find("Currency Text");
+        currency_system = currency.GetComponent<CurrencySystem>();
+    }
 
     private void GenerateWordList()
     {
-        // Reads the word list from the text file and splits it into an array 
+        // Reads word list from the text file and splits into array 
         using(StreamReader streamReader = new StreamReader(PlayerData.word_list))
         {
             string text_contents = streamReader.ReadToEnd();
@@ -65,19 +77,22 @@ public class TypingSystem : MonoBehaviour
 
     private void SentenceUpdate()
     {
-         typing_sentence = new StringBuilder(trailing_sentence_A.ToString()); 
+        // Scrolls sentences up by one, generating a new sentence for B
+        typing_sentence = new StringBuilder(trailing_sentence_A.ToString()); 
         trailing_sentence_A = new StringBuilder(trailing_sentence_B.ToString()); 
         trailing_sentence_B = GenerateSentence(new StringBuilder()); 
+
         cursor_position = 0;
+        sentence_char_correct_list.Clear();
     }
 
 
     private void KeyPressValidator()
     {
         // Code for validating key presses from: https://discussions.unity.com/t/find-out-which-key-was-pressed/616242/16
-
         char cursor_char = typing_sentence[cursor_position];
 
+        // Checks which keycode corresponds if there is an input, then saves the keycode to a char
         if (Input.anyKeyDown)
         {
             foreach (KeyCode keyCode in keyCodes)
@@ -91,11 +106,10 @@ public class TypingSystem : MonoBehaviour
                         timer_active = true;
                     }
 
+                    // Checks if character is correct, incorrect or invalid
                     if (char_typed == cursor_char)
                     { 
-                        cursor_position++;
                         CharTypedCorrect(char_typed);
-                        audio_source.PlayOneShot(typing_sfx[0]);
                     }
                     else if(char_typed == '\0')
                     {
@@ -103,9 +117,7 @@ public class TypingSystem : MonoBehaviour
                     }
                     else
                     {
-                        cursor_position++;
-                        audio_source.PlayOneShot(typing_sfx[1]);
-                        //CharTypedIncorrect()
+                        CharTypedIncorrect();
                     }
                 }
             }
@@ -153,18 +165,36 @@ public class TypingSystem : MonoBehaviour
 
     private void CharTypedCorrect(char char_typed)
     {
+        audio_source.PlayOneShot(typing_sfx[0]);
+
+        cursor_position++;
         correct_chars_a_second++;
+        sentence_char_correct_list.Add(1);
+
         if(char_typed == ' ')
         {
             PlayerData.words_typed_alltime++;
         }
+        currency_system.GainCurrency();
+        
     }
 
+    private void CharTypedIncorrect()
+    {
+        audio_source.PlayOneShot(typing_sfx[1]);
+
+        sentence_char_correct_list.Add(0);
+        cursor_position++;
+
+        currency_system.LoseCurrency();
+        
+    }
 
     private void WPMCalculator()
     {
         float minutes_played = timer/60f;
         
+        // Caps WPM measurement at last 100 seconds of typing
         if(correct_chars_list.Count == 101)
         {
             correct_chars_list.RemoveAt(0);
@@ -175,6 +205,7 @@ public class TypingSystem : MonoBehaviour
             minutes_played = 1.6f;
         }
 
+        // Calculates WPM using formula from 2.2.2
         float total_correct_chars = correct_chars_list.Sum();
         WPM = (total_correct_chars/5)/minutes_played;
         WPM = Mathf.Round(WPM * 10f) / 10f;
@@ -183,11 +214,13 @@ public class TypingSystem : MonoBehaviour
 
     private void AccuracyCalculator()
     {
+        // Caps Accuracy measurement at last 100 seconds of typing
         if(total_chars_list.Count == 101)
         {
             total_chars_list.RemoveAt(0);
         }
 
+        // Calculates accuracy using formula from 2.2.2
         float total_correct_chars = correct_chars_list.Sum();
         float total_chars_typed = total_chars_list.Sum();
         float errors = total_chars_typed - total_correct_chars;
@@ -201,6 +234,7 @@ public class TypingSystem : MonoBehaviour
         timer += Time.deltaTime;
         int current_second = Mathf.FloorToInt(timer);
         
+        //Calculates the WPM and accuracy every second 
         if (current_second > last_second)
         {
             correct_chars_list.Add(correct_chars_a_second);
@@ -215,19 +249,49 @@ public class TypingSystem : MonoBehaviour
         }
     }
 
+    private string CharColorer(string display_text) // - from ChatGPT
+    {
+        string colored_text = "";
+        
+        // Changes character color depending on input validity
+        for(int i=0; i < sentence_char_correct_list.Count; i++)
+        {
+            string color_hex = (i < sentence_char_correct_list.Count && sentence_char_correct_list[i] == 1) 
+                ? UnityEngine.ColorUtility.ToHtmlStringRGB(correct_color) 
+                : UnityEngine.ColorUtility.ToHtmlStringRGB(incorrect_color);
+
+            colored_text += $"<color=#{color_hex}>{display_text[i]}</color>";
+        }
+
+        // Appends rest of text to the colored characters
+        if (cursor_position < display_text.Length)
+        {
+            colored_text += display_text.Substring(cursor_position);
+        }
+
+        Debug.Log(colored_text);
+
+        return colored_text;
+    }
+
 
     private void UpdateTextDisplay()
     {
-        // Updates the typing text to move the cursor
         string display_text = typing_sentence.ToString();
         
-        display_text = display_text.Insert(cursor_position, "<u>");
-        display_text = display_text.Insert(cursor_position + 4, "</u>"); 
+        // Updates the text to move the cursor
+        string typing_text = display_text.Insert(cursor_position, "<u>");
+        typing_text = typing_text.Insert(cursor_position + 4, "</u>"); 
 
-        GUI_typing_text.text = display_text;
+        GUI_typing_text.text = typing_text;
+
+        GUI_color_overlay_text.text = CharColorer(display_text);
 
         //Updates the WPM with the accurate WPM
-        GUI_WPM_text.text = $"WPM: {WPM.ToString()}";
+        if(WPM < 200)
+        {
+            GUI_WPM_text.text = $"WPM: {WPM.ToString()}";
+        }
 
         GUI_accuracy_text.text = $"Accuracy: {accuracy.ToString()}%";
 
@@ -243,6 +307,8 @@ public class TypingSystem : MonoBehaviour
         trailing_sentence_A = GenerateSentence(new StringBuilder());
         trailing_sentence_B = GenerateSentence(new StringBuilder());
         audio_source = GetComponent<AudioSource>();
+
+        GetCurrencySystem();
     }
 
 
@@ -263,9 +329,5 @@ public class TypingSystem : MonoBehaviour
         {
             StatTimer();
         }
-        
-        Debug.Log(PlayerData.words_typed_alltime);
     }
-
-    
 }

@@ -6,8 +6,23 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/Achievements Scene.unity
+    guid: 0d178f9442005c94291786a10c40de21
+  - enabled: 1
+    path: Assets/Scenes/Stats Scene.unity
+    guid: e2033f34945ec7f4fbf89a8047f82796
+  - enabled: 1
+    path: Assets/Scenes/Ranking Scene.unity
+    guid: da2e1c5d301b7374e9498e38402e58e4
+  - enabled: 1
+    path: Assets/Scenes/Factory Screen.unity
+    guid: 75cb074d28d426a4e8e032613b261143
+  - enabled: 1
     path: Assets/Scenes/Typing Screen.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Shop Scene.unity
+    guid: 8d878a3412de14041a393e346ecfab9d
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
