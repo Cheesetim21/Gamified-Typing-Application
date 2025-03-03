@@ -17,7 +17,6 @@ public class TypingSystem : MonoBehaviour
     [SerializeField] private int cursor_position = 0;
     List<int> correct_chars_list = new List<int> {};
     List<int> total_chars_list = new List<int> {};
-
     List<int> sentence_char_correct_list = new List<int> {};
     private float timer = 0f;
     private int correct_chars_a_second;
@@ -29,23 +28,59 @@ public class TypingSystem : MonoBehaviour
     public Color correct_color = Color.gray;
     public Color incorrect_color = Color.red;
     public TextMeshProUGUI GUI_typing_text;
-
     public TextMeshProUGUI GUI_color_overlay_text;
     public TextMeshProUGUI GUI_WPM_text;
     public TextMeshProUGUI GUI_accuracy_text;
     public TextMeshProUGUI GUI_trail_sentence_a;
     public TextMeshProUGUI GUI_trail_sentence_b;
     private readonly Array keyCodes = Enum.GetValues(typeof(KeyCode));
-
     public AudioClip[] typing_sfx;
     private AudioSource audio_source;
     private CurrencySystem currency_system;
+    List<int> coin_pos_array = new List<int> {};
+    private System.Random rand = new System.Random();
 
     private void GetCurrencySystem()
     {
         GameObject currency = GameObject.Find("Currency Text");
         currency_system = currency.GetComponent<CurrencySystem>();
     }
+
+    private void CoinPosGenerator(int coin_amt)
+    {
+        List<int> valid_positions = new List<int>();
+        
+        // Creates an array for all positions of a valid character - not whitespace
+        for(int i=0; i < typing_sentence.Length; i++)
+        {
+            if (typing_sentence[i] != ' ')
+            {
+                valid_positions.Add(i);
+            }
+        }
+
+        // Creates an array for positions of coin characters
+        for(int i=0; i < coin_amt; i++)
+        {
+            int random_index = rand.Next(valid_positions.Count);
+            int random_pos = valid_positions[random_index];
+
+            coin_pos_array.Add(random_pos);
+        }
+    }
+
+    private void CoinCharAwarder()
+    {
+        for (int i = 0; i < coin_pos_array.Count; i++)
+        {
+            if(cursor_position - 1 == coin_pos_array[i])
+            {
+                currency_system.GainCurrency();
+                break;
+            }
+        }
+    }
+    
 
     private void GenerateWordList()
     {
@@ -84,6 +119,9 @@ public class TypingSystem : MonoBehaviour
 
         cursor_position = 0;
         sentence_char_correct_list.Clear();
+
+        coin_pos_array.Clear();
+        CoinPosGenerator(PlayerData.coin_amt_upgrade_lvl);
     }
 
 
@@ -175,9 +213,10 @@ public class TypingSystem : MonoBehaviour
         {
             PlayerData.words_typed_alltime++;
         }
-        currency_system.GainCurrency();
         
+        CoinCharAwarder();
     }
+
 
     private void CharTypedIncorrect()
     {
@@ -187,8 +226,8 @@ public class TypingSystem : MonoBehaviour
         cursor_position++;
 
         currency_system.LoseCurrency();
-        
     }
+
 
     private void WPMCalculator()
     {
@@ -252,24 +291,33 @@ public class TypingSystem : MonoBehaviour
     private string CharColorer(string display_text) // - from ChatGPT
     {
         string colored_text = "";
-        
-        // Changes character color depending on input validity
-        for(int i=0; i < sentence_char_correct_list.Count; i++)
-        {
-            string color_hex = (i < sentence_char_correct_list.Count && sentence_char_correct_list[i] == 1) 
-                ? UnityEngine.ColorUtility.ToHtmlStringRGB(correct_color) 
-                : UnityEngine.ColorUtility.ToHtmlStringRGB(incorrect_color);
 
+        // Loop through all characters in the display text
+        for (int i = 0; i < display_text.Length; i++)
+        {
+            // Check if the character should be gold (yellow) while the cursor hasn't passed it
+            bool isGold = coin_pos_array.Contains(i) && cursor_position <= i && !sentence_char_correct_list.Contains(i);
+
+            // Default color is white
+            string color_hex = UnityEngine.ColorUtility.ToHtmlStringRGB(Color.white);
+
+            // If it's a gold character, color it yellow (gold)
+            if (isGold)
+            {
+                color_hex = UnityEngine.ColorUtility.ToHtmlStringRGB(Color.yellow);
+            }
+            // If the cursor has passed this character, check if it's typed correctly or incorrectly
+            else if (i < cursor_position)
+            {
+                // Check if it's correctly typed (gray color for correct characters)
+                color_hex = (sentence_char_correct_list[i] == 1)
+                    ? UnityEngine.ColorUtility.ToHtmlStringRGB(correct_color)
+                    : UnityEngine.ColorUtility.ToHtmlStringRGB(incorrect_color); // Red for incorrect characters
+            }
+
+            // Add the color to the character at position i
             colored_text += $"<color=#{color_hex}>{display_text[i]}</color>";
         }
-
-        // Appends rest of text to the colored characters
-        if (cursor_position < display_text.Length)
-        {
-            colored_text += display_text.Substring(cursor_position);
-        }
-
-        Debug.Log(colored_text);
 
         return colored_text;
     }
@@ -278,7 +326,7 @@ public class TypingSystem : MonoBehaviour
     private void UpdateTextDisplay()
     {
         string display_text = typing_sentence.ToString();
-        
+
         // Updates the text to move the cursor
         string typing_text = display_text.Insert(cursor_position, "<u>");
         typing_text = typing_text.Insert(cursor_position + 4, "</u>"); 
@@ -309,6 +357,7 @@ public class TypingSystem : MonoBehaviour
         audio_source = GetComponent<AudioSource>();
 
         GetCurrencySystem();
+        CoinPosGenerator(PlayerData.coin_amt_upgrade_lvl);
     }
 
 

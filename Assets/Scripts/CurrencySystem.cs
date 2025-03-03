@@ -1,19 +1,22 @@
 using TMPro;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class CurrencySystem : MonoBehaviour
 {
-
     public TextMeshProUGUI currency_text;
     
+    
+    
+
     public void GainCurrency()
     {
-        PlayerData.coins++;
+        PlayerData.coins += 5;
     }
 
     public void LoseCurrency()
     {
-        PlayerData.coins = PlayerData.coins - 5;
+        PlayerData.coins -= 2;
     }
 
     private void UpdateText()

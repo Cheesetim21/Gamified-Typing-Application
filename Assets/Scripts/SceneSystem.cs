@@ -19,13 +19,13 @@ public class SceneSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.RightArrow) && scene_code != 5)
+        if (Input.GetKeyUp(KeyCode.RightArrow) && scene_code != 5)
         {
             scene_code = scene_code + 1;
             SwitchScene(scene_code);
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow) && scene_code != 0)
+        if (Input.GetKeyUp(KeyCode.LeftArrow) && scene_code != 0)
         {
             scene_code = scene_code - 1;
             SwitchScene(scene_code);
