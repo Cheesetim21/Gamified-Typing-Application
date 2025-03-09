@@ -1,22 +1,22 @@
 using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine.InputSystem.Controls;
 
 public class CurrencySystem : MonoBehaviour
 {
     public TextMeshProUGUI currency_text;
+    private float currency_timer;
     
-    
-    
-
     public void GainCurrency()
     {
-        PlayerData.coins += 5;
+        PlayerData.coins += PlayerData.upgrade_dict["coin_value"] + 5;
     }
 
     public void LoseCurrency()
     {
-        PlayerData.coins -= 2;
+        PlayerData.coins -= 3 - PlayerData.upgrade_dict["error_deduction"];
     }
 
     private void UpdateText()
@@ -24,11 +24,13 @@ public class CurrencySystem : MonoBehaviour
         currency_text.text = $"Coins: {PlayerData.coins}";
     }
 
-    void Start()
+    private void GenerateCurrency()
     {
-
+        if(PlayerData.upgrade_dict["coin_generator"] > 0)
+        {
+            PlayerData.coins += PlayerData.upgrade_dict["coin_generator"];
+        }
     }
-
 
     void Update()
     {
@@ -37,6 +39,13 @@ public class CurrencySystem : MonoBehaviour
         if(PlayerData.coins < 0)
         {
             PlayerData.coins = 0;
+        }
+
+        currency_timer += Time.deltaTime;
+        if(currency_timer > 5f)
+        {
+            GenerateCurrency();
+            currency_timer = 0;
         }
     }
 }

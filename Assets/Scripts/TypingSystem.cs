@@ -7,6 +7,7 @@ using System.Text;
 using UnityEngine.UI;
 using Unity.VisualScripting;
 using System.Collections.Generic;
+using System.Collections;
 
 public class TypingSystem : MonoBehaviour
 {
@@ -18,6 +19,8 @@ public class TypingSystem : MonoBehaviour
     List<int> correct_chars_list = new List<int> {};
     List<int> total_chars_list = new List<int> {};
     List<int> sentence_char_correct_list = new List<int> {};
+    private char space_char = '·';
+    private char return_char = '↓';
     private float timer = 0f;
     private int correct_chars_a_second;
     private int total_chars_a_second;
@@ -33,17 +36,26 @@ public class TypingSystem : MonoBehaviour
     public TextMeshProUGUI GUI_accuracy_text;
     public TextMeshProUGUI GUI_trail_sentence_a;
     public TextMeshProUGUI GUI_trail_sentence_b;
+    public TextMeshProUGUI event_text;
+
+    public TextMeshProUGUI CPS_text;
     private readonly Array keyCodes = Enum.GetValues(typeof(KeyCode));
     public AudioClip[] typing_sfx;
     private AudioSource audio_source;
     private CurrencySystem currency_system;
+    private IngameEventSystem event_manager;
     List<int> coin_pos_array = new List<int> {};
     private System.Random rand = new System.Random();
 
-    private void GetCurrencySystem()
+    private bool is_error_pause = false;
+
+    private void GetScripts()
     {
         GameObject currency = GameObject.Find("Currency Text");
         currency_system = currency.GetComponent<CurrencySystem>();
+
+        GameObject events = GameObject.FindGameObjectWithTag("RandomEventManager");
+        event_manager = events.GetComponent<IngameEventSystem>();
     }
 
     private void CoinPosGenerator(int coin_amt)
@@ -53,7 +65,7 @@ public class TypingSystem : MonoBehaviour
         // Creates an array for all positions of a valid character - not whitespace
         for(int i=0; i < typing_sentence.Length; i++)
         {
-            if (typing_sentence[i] != ' ')
+            if (typing_sentence[i] != space_char && typing_sentence[i] != return_char)
             {
                 valid_positions.Add(i);
             }
@@ -76,16 +88,21 @@ public class TypingSystem : MonoBehaviour
             if(cursor_position - 1 == coin_pos_array[i])
             {
                 currency_system.GainCurrency();
+                audio_source.PlayOneShot(typing_sfx[2]);
                 break;
             }
         }
+
+        audio_source.PlayOneShot(typing_sfx[0]);
     }
     
 
     private void GenerateWordList()
     {
+        string file_path = Path.Combine(Application.streamingAssetsPath, "player_words.txt");
+
         // Reads word list from the text file and splits into array 
-        using(StreamReader streamReader = new StreamReader(PlayerData.word_list))
+        using(StreamReader streamReader = new StreamReader(file_path))
         {
             string text_contents = streamReader.ReadToEnd();
             word_list = text_contents.Split(new char[] {' ', '\n', '\r'}, System.StringSplitOptions.RemoveEmptyEntries);
@@ -101,11 +118,14 @@ public class TypingSystem : MonoBehaviour
             string word_to_add = word_list[UnityEngine.Random.Range(0, word_list.Length)];
             if(sentence.Length + word_to_add.Length <= 31)
             {
-                sentence.Append(word_to_add + " ");
+                sentence.Append(word_to_add + "·");
             }
         }
-        sentence.Append(" ");
 
+        sentence.Remove(sentence.Length - 1, 1);
+        sentence.Append(return_char);
+        sentence.Append(' ');
+        
         return sentence;
     }
 
@@ -121,7 +141,15 @@ public class TypingSystem : MonoBehaviour
         sentence_char_correct_list.Clear();
 
         coin_pos_array.Clear();
-        CoinPosGenerator(PlayerData.coin_amt_upgrade_lvl);
+        if(event_manager.gold_rush_active)
+        {
+            CoinPosGenerator(PlayerData.upgrade_dict["coin_frequency"] + 10);
+        }
+        else
+        {
+            CoinPosGenerator(PlayerData.upgrade_dict["coin_frequency"] + 2);
+        }
+        
     }
 
 
@@ -153,7 +181,7 @@ public class TypingSystem : MonoBehaviour
                     {
                         break;
                     }
-                    else
+                    else if (!is_error_pause)
                     {
                         CharTypedIncorrect();
                     }
@@ -195,7 +223,8 @@ public class TypingSystem : MonoBehaviour
             case KeyCode.X: return 'x';
             case KeyCode.Y: return 'y';
             case KeyCode.Z: return 'z';
-            case KeyCode.Space: return ' ';
+            case KeyCode.Space: return space_char;
+            case KeyCode.Return: return return_char;
             default: return '\0';
         }
     }
@@ -203,18 +232,57 @@ public class TypingSystem : MonoBehaviour
 
     private void CharTypedCorrect(char char_typed)
     {
-        audio_source.PlayOneShot(typing_sfx[0]);
-
         cursor_position++;
         correct_chars_a_second++;
         sentence_char_correct_list.Add(1);
 
-        if(char_typed == ' ')
+        if(char_typed == space_char || char_typed == return_char)
         {
             PlayerData.words_typed_alltime++;
+            if(event_manager.precision_bonus_active && WasLastWordCorrect())
+            {
+                PlayerData.coins += 5;
+                audio_source.PlayOneShot(typing_sfx[0]);
+            }
         }
         
         CoinCharAwarder();
+    }
+
+    private bool WasLastWordCorrect()
+    {
+        if (cursor_position == 0) return false; 
+
+        int start = cursor_position - 1;
+
+        while (start > 0 && typing_sentence[start] != space_char && typing_sentence[start] != return_char)
+        {
+            start--;
+        }
+
+        if (typing_sentence[start] == space_char || typing_sentence[start] == return_char)
+        {
+            start++;
+        }
+
+        for (int i = start; i < cursor_position; i++)
+        {
+            if (sentence_char_correct_list[i] != 1) 
+            {
+                return false; 
+            }
+        }
+
+        return true;
+    }
+
+    IEnumerator PauseAfterMistake()
+    {
+        is_error_pause = true;
+        
+        yield return new WaitForSeconds(0.2f);
+
+        is_error_pause = false;
     }
 
 
@@ -224,8 +292,9 @@ public class TypingSystem : MonoBehaviour
 
         sentence_char_correct_list.Add(0);
         cursor_position++;
-
         currency_system.LoseCurrency();
+
+        StartCoroutine(PauseAfterMistake());
     }
 
 
@@ -253,12 +322,6 @@ public class TypingSystem : MonoBehaviour
 
     private void AccuracyCalculator()
     {
-        // Caps Accuracy measurement at last 100 seconds of typing
-        if(total_chars_list.Count == 101)
-        {
-            total_chars_list.RemoveAt(0);
-        }
-
         // Calculates accuracy using formula from 2.2.2
         float total_correct_chars = correct_chars_list.Sum();
         float total_chars_typed = total_chars_list.Sum();
@@ -345,10 +408,29 @@ public class TypingSystem : MonoBehaviour
 
         GUI_trail_sentence_a.text = trailing_sentence_A.ToString();
         GUI_trail_sentence_b.text = trailing_sentence_B.ToString();
+
+        if(PlayerData.upgrade_dict["coin_generator"] > 0)
+        {
+            CPS_text.gameObject.SetActive(true);
+            CPS_text.text = $"{PlayerData.upgrade_dict["coin_generator"]} coins / 5 sec";
+        }
+
+        if(event_manager.gold_rush_active)
+        {
+            event_text.text = "Gold Rush!!! +8 gold characters";
+        }
+        else if(event_manager.precision_bonus_active)
+        {
+            event_text.text = "Precision Bonus!!! +5 coins per correctly typed word";
+        }
+        else
+        {
+            event_text.text = "";
+        }
     }
 
 
-    void Start()
+    void Awake()
     {
         GenerateWordList();
         typing_sentence = GenerateSentence(new StringBuilder());
@@ -356,8 +438,16 @@ public class TypingSystem : MonoBehaviour
         trailing_sentence_B = GenerateSentence(new StringBuilder());
         audio_source = GetComponent<AudioSource>();
 
-        GetCurrencySystem();
-        CoinPosGenerator(PlayerData.coin_amt_upgrade_lvl);
+        GetScripts();
+        if(event_manager.gold_rush_active)
+        {
+            CoinPosGenerator(PlayerData.upgrade_dict["coin_frequency"] + 10);
+        }
+        else
+        {
+            CoinPosGenerator(PlayerData.upgrade_dict["coin_frequency"] + 2);
+        }
+        CPS_text.gameObject.SetActive(false);
     }
 
 
@@ -365,7 +455,7 @@ public class TypingSystem : MonoBehaviour
     {
         UpdateTextDisplay();
 
-        if(cursor_position != typing_sentence.Length- 1)
+        if(cursor_position != typing_sentence.Length - 1)
         {
             KeyPressValidator();
         }
