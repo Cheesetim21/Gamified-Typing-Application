@@ -11,7 +11,6 @@ using System.Collections;
 
 public class TypingSystem : MonoBehaviour
 {
-    private string[] word_list;
     private StringBuilder typing_sentence = new StringBuilder();
     private StringBuilder trailing_sentence_A = new StringBuilder();
     private StringBuilder trailing_sentence_B = new StringBuilder();
@@ -37,7 +36,6 @@ public class TypingSystem : MonoBehaviour
     public TextMeshProUGUI GUI_trail_sentence_a;
     public TextMeshProUGUI GUI_trail_sentence_b;
     public TextMeshProUGUI event_text;
-
     public TextMeshProUGUI CPS_text;
     private readonly Array keyCodes = Enum.GetValues(typeof(KeyCode));
     public AudioClip[] typing_sfx;
@@ -61,6 +59,7 @@ public class TypingSystem : MonoBehaviour
     private void CoinPosGenerator(int coin_amt)
     {
         List<int> valid_positions = new List<int>();
+        HashSet<int> coin_pos_set = new HashSet<int>(); // Ensures unique positions
         
         // Creates an array for all positions of a valid character - not whitespace
         for(int i=0; i < typing_sentence.Length; i++)
@@ -71,14 +70,19 @@ public class TypingSystem : MonoBehaviour
             }
         }
 
+        coin_amt = Mathf.Min(coin_amt, valid_positions.Count);
+        System.Random rand = new System.Random();
+
         // Creates an array for positions of coin characters
-        for(int i=0; i < coin_amt; i++)
+        while (coin_pos_set.Count < coin_amt && coin_pos_set.Count < valid_positions.Count)
         {
             int random_index = rand.Next(valid_positions.Count);
             int random_pos = valid_positions[random_index];
 
-            coin_pos_array.Add(random_pos);
+            coin_pos_set.Add(random_pos);
         }
+
+        coin_pos_array = coin_pos_set.ToList(); // Convert HashSet to List
     }
 
     private void CoinCharAwarder()
@@ -95,23 +99,11 @@ public class TypingSystem : MonoBehaviour
 
         audio_source.PlayOneShot(typing_sfx[0]);
     }
-    
-
-    private void GenerateWordList()
-    {
-        string file_path = Path.Combine(Application.streamingAssetsPath, "player_words.txt");
-
-        // Reads word list from the text file and splits into array 
-        using(StreamReader streamReader = new StreamReader(file_path))
-        {
-            string text_contents = streamReader.ReadToEnd();
-            word_list = text_contents.Split(new char[] {' ', '\n', '\r'}, System.StringSplitOptions.RemoveEmptyEntries);
-        }
-    }
-
 
     private StringBuilder GenerateSentence(StringBuilder sentence)
     {
+        string[] word_list = FactorySystem.GenerateWordList();
+
         // Randomly appends words until it fills the size of the text box
         while(sentence.Length < 27)
         {
@@ -432,7 +424,6 @@ public class TypingSystem : MonoBehaviour
 
     void Awake()
     {
-        GenerateWordList();
         typing_sentence = GenerateSentence(new StringBuilder());
         trailing_sentence_A = GenerateSentence(new StringBuilder());
         trailing_sentence_B = GenerateSentence(new StringBuilder());

@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class ShopSystem : MonoBehaviour
 {
@@ -38,7 +39,16 @@ public class ShopSystem : MonoBehaviour
             }
             else
             {
-                upgrade_texts[index].text = $"{upgrade.Key.Replace("_", " ").ToUpper()}\nCoins: {price}";
+                string upgrade_caption = $"{upgrade.Key.Replace("_", " ").ToUpper()}";
+
+                var leveled_upgrades = PlayerData.upgrade_dict.Keys.Take(4);
+
+                if(leveled_upgrades.Contains(upgrade.Key))
+                {
+                    upgrade_caption = upgrade_caption + $" [Lv. {level + 1}]";
+                }
+
+                upgrade_texts[index].text = upgrade_caption + $"\nCoins: {price}";
             }
             index++;
         }

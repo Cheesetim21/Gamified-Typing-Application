@@ -11,11 +11,13 @@ public class IngameEventSystem : MonoBehaviour
     private bool cooldown_active = true;
     public bool gold_rush_active = false;
     public bool precision_bonus_active = false;
+    private float cooldown_duration = 180f;
+    private float event_duration = 30f;
 
     private IEnumerator EventCooldown()
     {
         cooldown_active = true;
-        yield return new WaitForSeconds(300f); 
+        yield return new WaitForSeconds(cooldown_duration); 
         cooldown_active = false;
     }
 
@@ -30,7 +32,7 @@ public class IngameEventSystem : MonoBehaviour
             precision_bonus_active = true;
         }
 
-        yield return new WaitForSeconds(30f); 
+        yield return new WaitForSeconds(event_duration); 
 
         gold_rush_active = false;
         precision_bonus_active = false;
