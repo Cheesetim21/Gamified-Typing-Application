@@ -8,14 +8,14 @@ public class ShopSystem : MonoBehaviour
 {
     private Dictionary<string, int[]> upgrade_prices = new Dictionary<string, int[]>
     {
-        { "coin_value", new int[] { 250, 750, 1750, 3500, 6000, 0 } },
-        { "coin_frequency", new int[] { 500, 1500, 4000, 7500, 12000, 0 } },
-        { "coin_generator", new int[] { 750, 2000, 4500, 9000, 15000, 0 } },
-        { "error_deduction", new int[] { 1000, 4000, 0 } },
-        { "gold_rush", new int[] { 8000, 0 } },
-        { "precision_bonus", new int[] { 3000, 0 } },
-        { "statistics", new int[] { 1000, 0 } },
-        { "rankings", new int[] { 3500, 0 } }
+        { "coin_value", new int[] { 100, 300, 800, 1500, 2500, 0 } },
+        { "coin_frequency", new int[] { 200, 500, 1200, 2000, 3500, 0 } },
+        { "coin_generator", new int[] { 300, 750, 1300, 2000, 3200, 0 } },
+        { "error_deduction", new int[] { 400, 1200, 0 } },
+        { "gold_rush", new int[] { 2000, 0 } },
+        { "precision_bonus", new int[] { 1000, 0 } },
+        { "rankings", new int[] { 250, 0 } },
+        { "achievements", new int[] { 500, 0 } }
     };
 
     public TextMeshProUGUI[] upgrade_texts;
@@ -82,14 +82,5 @@ public class ShopSystem : MonoBehaviour
 
         UpdateUpgradeTexts();
         audio_source = GetComponent<AudioSource>();
-    }
-
-    
-    void Update()
-    {
-        if (Input.GetKeyUp(KeyCode.F10))
-        {
-            PlayerData.coins += 1000;
-        }
     }
 }

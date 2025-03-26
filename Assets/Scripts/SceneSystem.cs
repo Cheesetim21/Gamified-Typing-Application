@@ -1,23 +1,53 @@
+using Microsoft.Unity.VisualStudio.Editor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class SceneSystem : MonoBehaviour
 {
     private static SceneSystem instance;
     private int scene_index;
 
-    private bool scene_1_locked = true;
+    private bool scene_0_locked = true;
     private bool scene_2_locked = true;
+    private bool initialLoadComplete = false;
+    public UnityEngine.UI.Image right_arrow;
+    public UnityEngine.UI.Image left_arrow;
 
     private void UpdateUnlockStatus()
     {
-        scene_1_locked = PlayerData.upgrade_dict["statistics"] != 1;
+        if (initialLoadComplete)
+        {
+            scene_0_locked = PlayerData.upgrade_dict["achievements"] != 1;
+        }
+
         scene_2_locked = PlayerData.upgrade_dict["rankings"] != 1;
     }
 
     private bool IsSceneLocked(int scene_index)
     {
-        return (scene_index == 1 && scene_1_locked) || (scene_index == 2 && scene_2_locked);
+        return (scene_index == 0 && scene_0_locked) || (scene_index == 2 && scene_2_locked);
+    }
+
+    private void UpdateArrowVisibility()
+    {
+        if(scene_index == 0 || scene_index == 1 && scene_0_locked)
+        {
+            left_arrow.enabled = false;
+        }
+        else
+        {
+            left_arrow.enabled = true;
+        }
+
+        if(scene_index == 5)
+        {
+            right_arrow.enabled = false;
+        }
+        else
+        {
+            right_arrow.enabled = true;
+        }
     }
 
     public void SwitchSceneRight()
@@ -35,6 +65,11 @@ public class SceneSystem : MonoBehaviour
     public void SwitchSceneLeft()
     {
         UpdateUnlockStatus();
+
+        if (scene_index == 1 && scene_0_locked)
+        {
+            return;
+        }
 
         do
         {
@@ -66,6 +101,8 @@ public class SceneSystem : MonoBehaviour
                 SceneManager.LoadScene(4);
                 scene_index = 4;
             }
+
+            initialLoadComplete = true;
         }
         else
         {
@@ -79,18 +116,20 @@ public class SceneSystem : MonoBehaviour
     {
         if (Input.GetKeyUp(KeyCode.RightArrow) && scene_index != 5)
         {
-            
             SwitchSceneRight();
+            UpdateArrowVisibility();
         }
 
         if (Input.GetKeyUp(KeyCode.LeftArrow) && scene_index != 0)
         {
             SwitchSceneLeft();
+            UpdateArrowVisibility();
         }
 
         if (Input.GetKeyUp(KeyCode.Escape))
         {
             QuitGame();
         }
+        
     }
 }

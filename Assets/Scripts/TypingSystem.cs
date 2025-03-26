@@ -8,6 +8,7 @@ using UnityEngine.UI;
 using Unity.VisualScripting;
 using System.Collections.Generic;
 using System.Collections;
+using JetBrains.Annotations;
 
 public class TypingSystem : MonoBehaviour
 {
@@ -44,8 +45,11 @@ public class TypingSystem : MonoBehaviour
     private IngameEventSystem event_manager;
     List<int> coin_pos_array = new List<int> {};
     private System.Random rand = new System.Random();
-
     private bool is_error_pause = false;
+    private float last_top_WPM_time = 0f;
+    private float interval_top_WPM = 0f;
+    private bool tracking_top_WPM = false;
+    private int sentences_typed = 0;
 
     private void GetScripts()
     {
@@ -141,6 +145,8 @@ public class TypingSystem : MonoBehaviour
         {
             CoinPosGenerator(PlayerData.upgrade_dict["coin_frequency"] + 2);
         }
+
+        sentences_typed++;
         
     }
 
@@ -158,6 +164,7 @@ public class TypingSystem : MonoBehaviour
                 if (Input.GetKeyDown(keyCode)) {
                     char char_typed = GetCharacterFromKeyCode(keyCode);
                     total_chars_a_second++;
+                    PlayerData.total_chars_typed++;
 
                     if (!timer_active)
                     {
@@ -227,6 +234,7 @@ public class TypingSystem : MonoBehaviour
         cursor_position++;
         correct_chars_a_second++;
         sentence_char_correct_list.Add(1);
+        PlayerData.total_correct_chars++;
 
         if(char_typed == space_char || char_typed == return_char)
         {
@@ -285,14 +293,19 @@ public class TypingSystem : MonoBehaviour
         sentence_char_correct_list.Add(0);
         cursor_position++;
         currency_system.LoseCurrency();
+        PlayerData.total_errors++;
 
         StartCoroutine(PauseAfterMistake());
     }
 
-
     private void WPMCalculator()
     {
-        float minutes_played = timer/60f;
+        if(sentences_typed < 3)
+        {
+            return;
+        }
+
+        float minutes_played = Mathf.Max(timer / 60f, 0.1f);
         
         // Caps WPM measurement at last 100 seconds of typing
         if(correct_chars_list.Count == 101)
@@ -309,6 +322,25 @@ public class TypingSystem : MonoBehaviour
         float total_correct_chars = correct_chars_list.Sum();
         WPM = (total_correct_chars/5)/minutes_played;
         WPM = Mathf.Round(WPM * 10f) / 10f;
+        
+        if (WPM > PlayerData.top_wpm && !tracking_top_WPM && WPM < 170)
+        {
+            tracking_top_WPM = true;
+            interval_top_WPM = WPM;
+            last_top_WPM_time = PlayerData.play_time;
+        }
+
+        if (tracking_top_WPM)
+        {
+            interval_top_WPM = Mathf.Max(interval_top_WPM, WPM);
+
+            if (timer - last_top_WPM_time >= 3.0f)
+            {
+                PlayerData.top_wpm = interval_top_WPM;
+                Debug.Log(PlayerData.top_wpm);
+                tracking_top_WPM = false;
+            }
+        }
     }
 
 
@@ -390,10 +422,13 @@ public class TypingSystem : MonoBehaviour
 
         GUI_color_overlay_text.text = CharColorer(display_text);
 
-        //Updates the WPM with the accurate WPM
-        if(WPM < 200)
+        if(sentences_typed > 2)
         {
             GUI_WPM_text.text = $"WPM: {WPM.ToString()}";
+        }
+        else
+        {
+            GUI_WPM_text.text = $"WPM: N/A";
         }
 
         GUI_accuracy_text.text = $"Accuracy: {accuracy.ToString()}%";

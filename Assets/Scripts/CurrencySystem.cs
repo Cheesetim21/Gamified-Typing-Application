@@ -12,6 +12,7 @@ public class CurrencySystem : MonoBehaviour
     public void GainCurrency()
     {
         PlayerData.coins += PlayerData.upgrade_dict["coin_value"] + 5;
+        PlayerData.total_coins_alltime += PlayerData.upgrade_dict["coin_value"] + 5;
     }
 
     public void LoseCurrency()
@@ -29,6 +30,7 @@ public class CurrencySystem : MonoBehaviour
         if(PlayerData.upgrade_dict["coin_generator"] > 0)
         {
             PlayerData.coins += PlayerData.upgrade_dict["coin_generator"];
+            PlayerData.total_coins_alltime += PlayerData.upgrade_dict["coin_generator"];
         }
     }
 

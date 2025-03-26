@@ -3,7 +3,6 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor.MPE;
 
 public class IngameEventSystem : MonoBehaviour
 {
@@ -62,7 +61,6 @@ public class IngameEventSystem : MonoBehaviour
 
     void Start()
     {
-
         StartCoroutine(EventCooldown());
     }
 
